@@ -1,5 +1,5 @@
 {
-  "repo": "teddashh/openclaw-hermes-watcher",
+  "repo": "TED-H-com/openclaw-hermes-watcher",
   "slug": "openclaw-hermes-watcher",
   "name": "openclaw-hermes-watcher",
   "mark": "HW",
@@ -44,7 +44,7 @@
       }
     },
     "secondary": {
-      "href": "https://github.com/teddashh/openclaw-hermes-watcher",
+      "href": "https://github.com/TED-H-com/openclaw-hermes-watcher",
       "label": {
         "en": "View source",
         "zh": "查看原始碼"
@@ -480,14 +480,14 @@
       "zh": "你需要一台已經在跑 OpenClaw 的 Linux 主機、登入好的 gh CLI、可以執行 chattr 的 sudo 權限，以及 bash 4+、jq、curl、envsubst，還有開啟 linger 的 systemd user service。Telegram 可有可無。"
     },
     "primary": {
-      "href": "https://github.com/teddashh/openclaw-hermes-watcher/blob/main/docs/INSTALL.md",
+      "href": "https://github.com/TED-H-com/openclaw-hermes-watcher/blob/main/docs/INSTALL.md",
       "label": {
         "en": "Install guide",
         "zh": "安裝指南"
       }
     },
     "secondary": {
-      "href": "https://github.com/teddashh/openclaw-hermes-watcher/blob/main/docs/ROLLBACK.md",
+      "href": "https://github.com/TED-H-com/openclaw-hermes-watcher/blob/main/docs/ROLLBACK.md",
       "label": {
         "en": "Rollback guide",
         "zh": "回滾指南"
@@ -503,7 +503,7 @@
           "en": "machine.env holds non-secret settings. For Telegram, also copy machine.env.secrets.example to machine.env.secrets and put the bot tokens there; that file stays out of git.",
           "zh": "machine.env 放非機密設定。要用 Telegram 的話，再把 machine.env.secrets.example 複製成 machine.env.secrets，bot token 放在那裡，這個檔案不進 git。"
         },
-        "code": "git clone https://github.com/teddashh/openclaw-hermes-watcher\ncd openclaw-hermes-watcher\ncp config/machine.env.example config/machine.env\n$EDITOR config/machine.env"
+        "code": "git clone https://github.com/TED-H-com/openclaw-hermes-watcher\ncd openclaw-hermes-watcher\ncp config/machine.env.example config/machine.env\n$EDITOR config/machine.env"
       },
       {
         "title": {
@@ -644,21 +644,21 @@
   ],
   "links": [
     {
-      "href": "https://github.com/teddashh/openclaw-hermes-watcher/releases",
+      "href": "https://github.com/TED-H-com/openclaw-hermes-watcher/releases",
       "label": {
         "en": "Releases",
         "zh": "版本"
       }
     },
     {
-      "href": "https://github.com/teddashh/openclaw-hermes-watcher/blob/main/ARCHITECTURE.md",
+      "href": "https://github.com/TED-H-com/openclaw-hermes-watcher/blob/main/ARCHITECTURE.md",
       "label": {
         "en": "Architecture",
         "zh": "架構文件"
       }
     },
     {
-      "href": "https://github.com/teddashh/openclaw-hermes-watcher/blob/main/README.zh-TW.md",
+      "href": "https://github.com/TED-H-com/openclaw-hermes-watcher/blob/main/README.zh-TW.md",
       "label": {
         "en": "中文 README",
         "zh": "中文 README"
