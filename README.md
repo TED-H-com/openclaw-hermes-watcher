@@ -284,6 +284,29 @@ Note that re-running `scripts/all.sh` re-renders the baseline from `templates/` 
 
 ### 3.4 The watcher (deterministic bash, not an LLM)
 
+
+```mermaid
+flowchart TD
+    A[systemd user unit<br>openclaw-watcher.service] -->|Runs every 60s| B(watcher.sh<br>chattr +i)
+
+    subgraph Checks
+    B --> C{chattr +i on baseline?}
+    B --> D{hashes match?}
+    B --> E{openclaw gateway running?}
+    end
+
+    C -->|No| F[Emit: baseline_immutability_lost]
+    D -->|No| G[Emit: baseline_hash_mismatch /<br>baseline_meta_hash_mismatch /<br>baseline_hashes_file_missing]
+    E -->|No| H[Emit: openclaw_gateway_not_running]
+
+    B -->|Hourly| I[Emit: watcher_heartbeat]
+
+    F --> J[(evolution-journal.jsonl)]
+    G --> J
+    H --> J
+    I --> J
+```
+
 A systemd user unit at `~/.config/systemd/user/openclaw-watcher.service` runs `~/.openclaw/workspace/baseline/watcher.sh` (itself `chattr +i`) as a long-running loop that sleeps 60 seconds between passes (`INTERVAL_SEC=60`). systemd restarts it 30 seconds after a failure.
 
 Every pass, the watcher:
@@ -307,6 +330,48 @@ Anomalies become JSONL events in `~/.openclaw/workspace/evolution-journal.jsonl`
 **Why the watcher's checks are minimal:**
 - Every extra check is one more thing to maintain. The four checks above are the load-bearing ones.
 - Changing the watcher is a heavy decision on purpose, because `watcher.sh` is `chattr +i`. To change it for good, edit `lib/watcher.sh` in your fork and re-run `scripts/all.sh`.
+
+
+
+#### Watcher Event Payload Specifications
+
+The watcher writes anomalies as append-only JSONL entries to `~/.openclaw/workspace/evolution-journal.jsonl`.
+
+All events share a base JSON schema, with `details` present for most events:
+
+```json
+{
+  "ts": "YYYY-MM-DDTHH:MM:SSZ",
+  "event": "event_name",
+  "actor": "watcher",
+  "id": "watcher-<timestamp>-<pid>",
+  "details": "..."
+}
+```
+
+The `watcher_heartbeat` event omits the `details` field and its `id` format is slightly different:
+
+```json
+{
+  "ts": "YYYY-MM-DDTHH:MM:SSZ",
+  "event": "watcher_heartbeat",
+  "actor": "watcher",
+  "id": "watcher-heartbeat-<timestamp>"
+}
+```
+
+**Events Emitted:**
+
+| Event Name | Condition | Details |
+|---|---|---|
+| `watcher_started` | Watcher service starts up. | `interval=<sec> baseline_dir=<path>` |
+| `watcher_stopped` | Watcher service receives SIGTERM (e.g., stopping). | `received SIGTERM` |
+| `baseline_immutability_lost` | A baseline file loses its `chattr +i` flag. | The file path. |
+| `baseline_hashes_file_missing` | The `.expected-hashes` file is missing. | The path to `.expected-hashes`. |
+| `baseline_meta_hash_mismatch` | The hash of `.expected-hashes` does not match `.expected-hashes.sha256`. | `expected=<hash> actual=<hash> file=<path>` |
+| `baseline_hash_mismatch` | One or more baseline file contents don't match `.expected-hashes`. | List of failed files (from `sha256sum -c`). |
+| `openclaw_gateway_not_running` | No `openclaw.*gateway` process found. | *(empty string)* |
+| `watcher_heartbeat` | Emitted once every hour. | *(field omitted)* |
 
 ### 3.5 The cross-patrol heartbeat (Phase 2.5)
 
