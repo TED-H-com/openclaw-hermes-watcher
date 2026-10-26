@@ -23,6 +23,16 @@ INTERVAL_SEC="${INTERVAL_SEC:-60}"
 # Helpers
 # ---------------------------------------------------------------------------
 
+escape_json_string() {
+    local str="$1"
+    str="${str//\\/\\\\}"
+    str="${str//\"/\\\"}"
+    str="${str//$'\n'/\\n}"
+    str="${str//$'\r'/\\r}"
+    str="${str//$'\t'/\\t}"
+    printf "%s" "$str"
+}
+
 emit_event() {
     local event="$1"
     local details="$2"
@@ -34,7 +44,7 @@ emit_event() {
     id="watcher-$(date +%s)-$$"
 
     # Use jq -nc to safely build JSON; falls back to bare echo if jq missing
-    if command -v jq >/dev/null 2>&1; then
+    if command -v jq >/dev/null 2>&1 && jq --version >/dev/null 2>&1; then
         jq -nc \
             --arg ts "$ts" \
             --arg event "$event" \
@@ -44,9 +54,13 @@ emit_event() {
             '{ts: $ts, event: $event, actor: $actor, id: $id, details: $details}' \
             >> "$JOURNAL"
     else
-        # Last-ditch JSON construction without jq (escaping limited)
+        # Last-ditch JSON construction without jq
         printf '{"ts":"%s","event":"%s","actor":"%s","id":"%s","details":"%s"}\n' \
-            "$ts" "$event" "$actor" "$id" "$details" >> "$JOURNAL"
+            "$(escape_json_string "$ts")" \
+            "$(escape_json_string "$event")" \
+            "$(escape_json_string "$actor")" \
+            "$(escape_json_string "$id")" \
+            "$(escape_json_string "$details")" >> "$JOURNAL"
     fi
 }
 
@@ -57,7 +71,7 @@ emit_heartbeat() {
     local id
     id="watcher-heartbeat-$(date +%s)"
 
-    if command -v jq >/dev/null 2>&1; then
+    if command -v jq >/dev/null 2>&1 && jq --version >/dev/null 2>&1; then
         jq -nc \
             --arg ts "$ts" \
             --arg id "$id" \
@@ -65,7 +79,7 @@ emit_heartbeat() {
             >> "$JOURNAL"
     else
         printf '{"ts":"%s","event":"watcher_heartbeat","actor":"watcher","id":"%s"}\n' \
-            "$ts" "$id" >> "$JOURNAL"
+            "$(escape_json_string "$ts")" "$(escape_json_string "$id")" >> "$JOURNAL"
     fi
 }
 
@@ -120,6 +134,13 @@ check_hashes() {
             emit_event "baseline_meta_hash_mismatch" "expected=$recorded actual=$actual file=$EXPECTED_HASHES_FILE"
             return 1
         fi
+    fi
+
+    # Defend against path traversal via .expected-hashes.
+    # The file should only contain bare basenames.
+    if grep -q '/' "$EXPECTED_HASHES_FILE" 2>/dev/null; then
+        emit_event "baseline_path_traversal_attempt" "slashes found in $EXPECTED_HASHES_FILE"
+        return 1
     fi
 
     # `sha256sum -c` resolves the filenames in the hash file as RELATIVE
