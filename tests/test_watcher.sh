@@ -138,6 +138,44 @@ test_debounce_logic() {
     fi
 }
 
+test_path_traversal_hashes() {
+    echo "test_path_traversal_hashes"
+    > "$JOURNAL"
+    echo "hash  ../../../etc/shadow" > "$EXPECTED_HASHES_FILE"
+    check_hashes || true
+    if ! grep -q baseline_path_traversal_attempt "$JOURNAL"; then
+        FAIL "Expected baseline_path_traversal_attempt"
+    fi
+}
+
+test_payload_injection() {
+    echo "test_payload_injection"
+    > "$JOURNAL"
+    # Temporarily mask jq to force the printf fallback
+    local old_path="$PATH"
+    mkdir -p "$TEST_DIR/no_jq"
+    cat << 'MOCK' > "$TEST_DIR/no_jq/jq"
+#!/bin/bash
+exit 1
+MOCK
+    chmod +x "$TEST_DIR/no_jq/jq"
+    export PATH="$TEST_DIR/no_jq:$PATH"
+
+    # Ensure jq isn't found
+    emit_event "test_injection" 'malicious", "injected": "yes' "attacker"
+    export PATH="$old_path"
+
+    # Check that the output contains the escaped quotes and no extra injected keys
+    local last_line
+    last_line=$(tail -n 1 "$JOURNAL")
+    if [[ "$last_line" != *'malicious\", \"injected\": \"yes'* ]]; then
+        FAIL "Expected payload to be escaped. Got: $last_line"
+    fi
+    if [[ "$last_line" == *'""injected": "yes'* ]]; then
+        FAIL "Payload was injected! Got: $last_line"
+    fi
+}
+
 test_immutability_ok
 test_immutability_lost
 test_hashes_missing
@@ -146,4 +184,6 @@ test_hashes_mismatch
 test_gateway_running
 test_gateway_not_running
 test_debounce_logic
+test_path_traversal_hashes
+test_payload_injection
 echo "Tests pass."
