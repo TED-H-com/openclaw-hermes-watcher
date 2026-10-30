@@ -113,8 +113,8 @@ fi
 # must not lie about its own state.
 SELF_DIR="${JOB_DIR[$SELF]}"
 mkdir -p "$SELF_DIR"
-NOW_ISO=$(date -Iseconds)
-NOW_EPOCH=$(date +%s)
+printf -v NOW_ISO '%(%Y-%m-%dT%H:%M:%S%z)T' -1
+printf -v NOW_EPOCH '%(%s)T' -1
 HB_LINE="$NOW_ISO interval=${JOB_INTERVAL[$SELF]}h grace=${JOB_GRACE[$SELF]}h job=$SELF"
 echo "$HB_LINE" > "$SELF_DIR/$SELF.last"
 # Verify the write actually landed (read back; compare).
@@ -133,7 +133,7 @@ for peer in "${!JOB_INTERVAL[@]}"; do
     ALERTS+=("STALE: $peer (no heartbeat ever)")
     continue
   fi
-  last_iso=$(awk '{print $1}' "$hb" 2>/dev/null)
+  read -r last_iso _ < "$hb" || true
   last_epoch=$(date -d "$last_iso" +%s 2>/dev/null || echo 0)
   if [ "$last_epoch" = "0" ]; then
     ALERTS+=("STALE: $peer (unreadable heartbeat)")

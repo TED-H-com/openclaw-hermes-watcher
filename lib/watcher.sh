@@ -19,6 +19,12 @@ JOURNAL="${JOURNAL:-$HOME/.openclaw/workspace/evolution-journal.jsonl}"
 EXPECTED_HASHES_FILE="$BASELINE_DIR/.expected-hashes"
 INTERVAL_SEC="${INTERVAL_SEC:-60}"
 
+# Global var to cache jq availability
+HAS_JQ=""
+if command -v jq >/dev/null 2>&1 && jq --version >/dev/null 2>&1; then
+    HAS_JQ="1"
+fi
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -44,7 +50,7 @@ emit_event() {
     id="watcher-$(date +%s)-$$"
 
     # Use jq -nc to safely build JSON; falls back to bare echo if jq missing
-    if command -v jq >/dev/null 2>&1 && jq --version >/dev/null 2>&1; then
+    if [ -n "$HAS_JQ" ]; then
         jq -nc \
             --arg ts "$ts" \
             --arg event "$event" \
@@ -71,7 +77,7 @@ emit_heartbeat() {
     local id
     id="watcher-heartbeat-$(date +%s)"
 
-    if command -v jq >/dev/null 2>&1 && jq --version >/dev/null 2>&1; then
+    if [ -n "$HAS_JQ" ]; then
         jq -nc \
             --arg ts "$ts" \
             --arg id "$id" \
@@ -96,18 +102,39 @@ check_immutability() {
     # token. We pipe directly into the read loop instead.
     local lost=0
 
+    local files=()
     while IFS= read -r -d '' f; do
-        [ -z "$f" ] && continue
-        if ! lsattr "$f" 2>/dev/null | awk '{print $1}' | grep -q 'i'; then
-            emit_event "baseline_immutability_lost" "$f"
-            lost=1
-        fi
+        [ -n "$f" ] && files+=("$f")
     done < <(
         find "$BASELINE_DIR" -maxdepth 1 \( -name '*.yaml' -o -name '*.md' -o -name '*.sh' \) -print0
         for extra in "$EXPECTED_HASHES_FILE" "${EXPECTED_HASHES_FILE}.sha256"; do
             [ -f "$extra" ] && printf '%s\0' "$extra"
         done
     )
+
+    if [ ${#files[@]} -gt 0 ]; then
+        # Use a temporary file to capture both stdout and the exit code safely
+        local tmp_out
+        tmp_out=$(mktemp)
+        if ! lsattr "${files[@]}" > "$tmp_out" 2>/dev/null; then
+             # lsattr failed (e.g. file missing, permission denied)
+             # emit an event for the first missing/inaccessible file to signal lost immutability
+             for f in "${files[@]}"; do
+                 if [ ! -f "$f" ] && [ ! -d "$f" ]; then
+                     emit_event "baseline_immutability_lost" "$f (missing)"
+                 fi
+             done
+             lost=1
+        fi
+
+        while read -r attr file; do
+            if [[ "$attr" != *i* ]]; then
+                 emit_event "baseline_immutability_lost" "$file"
+                 lost=1
+            fi
+        done < "$tmp_out"
+        rm -f "$tmp_out"
+    fi
 
     return $lost
 }
