@@ -121,6 +121,16 @@ load_config() {
 # install scripts, not from the running OpenClaw main agent. Mis-attributing
 # them to "main" makes the journal harder to triage during a rescue.
 # scripts/edit-baseline.sh passes actor="operator" explicitly.
+escape_json_string() {
+    local str="$1"
+    str="${str//\\/\\\\}"
+    str="${str//\"/\\\"}"
+    str="${str//$'\n'/\\n}"
+    str="${str//$'\r'/\\r}"
+    str="${str//$'\t'/\\t}"
+    printf "%s" "$str" | tr -d '[:cntrl:]'
+}
+
 emit_journal_event() {
     local event="$1" details="${2:-}" actor="${3:-installer}"
     local ts id
@@ -135,6 +145,10 @@ emit_journal_event() {
             >> "$JOURNAL"
     else
         printf '{"ts":"%s","event":"%s","actor":"%s","id":"%s","details":"%s"}\n' \
-            "$ts" "$event" "$actor" "$id" "$details" >> "$JOURNAL"
+            "$(escape_json_string "$ts")" \
+            "$(escape_json_string "$event")" \
+            "$(escape_json_string "$actor")" \
+            "$(escape_json_string "$id")" \
+            "$(escape_json_string "$details")" >> "$JOURNAL"
     fi
 }
