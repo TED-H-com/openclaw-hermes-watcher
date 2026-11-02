@@ -30,7 +30,7 @@ escape_json_string() {
     str="${str//$'\n'/\\n}"
     str="${str//$'\r'/\\r}"
     str="${str//$'\t'/\\t}"
-    printf "%s" "$str"
+    printf "%s" "$str" | tr -d '[:cntrl:]'
 }
 
 emit_event() {
