@@ -39,9 +39,9 @@ emit_event() {
     local actor="${3:-watcher}"
 
     local ts
-    ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    TZ=UTC printf -v ts '%(%Y-%m-%dT%H:%M:%SZ)T' -1
     local id
-    id="watcher-$(date +%s)-$$"
+    printf -v id 'watcher-%(%s)T-$$' -1
 
     # Use jq -nc to safely build JSON; falls back to bare echo if jq missing
     if command -v jq >/dev/null 2>&1 && jq --version >/dev/null 2>&1; then
@@ -67,9 +67,9 @@ emit_event() {
 emit_heartbeat() {
     # Once per hour, emit a heartbeat so we know the watcher is alive
     local ts
-    ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    TZ=UTC printf -v ts '%(%Y-%m-%dT%H:%M:%SZ)T' -1
     local id
-    id="watcher-heartbeat-$(date +%s)"
+    printf -v id 'watcher-heartbeat-%(%s)T' -1
 
     if command -v jq >/dev/null 2>&1 && jq --version >/dev/null 2>&1; then
         jq -nc \
@@ -98,7 +98,9 @@ check_immutability() {
 
     while IFS= read -r -d '' f; do
         [ -z "$f" ] && continue
-        if ! lsattr "$f" 2>/dev/null | awk '{print $1}' | grep -q 'i'; then
+        local attr
+        attr=$(lsattr "$f" 2>/dev/null || true)
+        if [[ "${attr%% *}" != *i* ]]; then
             emit_event "baseline_immutability_lost" "$f"
             lost=1
         fi
@@ -127,9 +129,10 @@ check_hashes() {
     # Verify the integrity of .expected-hashes itself if a meta-hash exists
     local meta_hash_file="${EXPECTED_HASHES_FILE}.sha256"
     if [ -f "$meta_hash_file" ]; then
-        local recorded actual
-        recorded=$(awk '{print $1}' "$meta_hash_file")
-        actual=$(sha256sum "$EXPECTED_HASHES_FILE" | awk '{print $1}')
+        local recorded _ rest actual
+        read -r recorded _ < "$meta_hash_file" || true
+        actual=$(sha256sum "$EXPECTED_HASHES_FILE")
+        actual="${actual%% *}"
         if [ "$recorded" != "$actual" ]; then
             emit_event "baseline_meta_hash_mismatch" "expected=$recorded actual=$actual file=$EXPECTED_HASHES_FILE"
             return 1
@@ -191,7 +194,7 @@ main() {
     emit_event "watcher_started" "interval=${INTERVAL_SEC}s baseline_dir=$BASELINE_DIR"
 
     local hour_marker
-    hour_marker=$(date +%H)
+    printf -v hour_marker '%(%H)T' -1
 
     while true; do
         # If the journal isn't writable, no point running the other checks:
@@ -206,7 +209,7 @@ main() {
         check_openclaw_gateway || true
 
         local now_hour
-        now_hour=$(date +%H)
+        printf -v now_hour '%(%H)T' -1
         if [ "$now_hour" != "$hour_marker" ]; then
             emit_heartbeat
             hour_marker=$now_hour
