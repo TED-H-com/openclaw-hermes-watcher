@@ -31,9 +31,23 @@
 #                    TELEGRAM_CHAT_ID=<chat_id>
 #                    TELEGRAM_PROXY=http://127.0.0.1:8118  # optional
 #
+# === API & Usage ===
 # Usage: heartbeat-patrol --self <job-name>
 # Known jobs are registered in JOB_INTERVAL/JOB_GRACE/JOB_DIR below; update
 # them when adding/removing scheduled cron jobs on this host.
+#
+# Arguments:
+#   --self <job_name>    Registers a heartbeat for the given job.
+#
+# Environment Variables (typically loaded from ~/.config/heartbeat-patrol.env):
+#   TELEGRAM_BOT_TOKEN   - Bot token for sending patrol alerts
+#   TELEGRAM_CHAT_ID     - Operator ID for receiving patrol alerts
+#   TELEGRAM_PROXY       - (Optional) HTTP Proxy to use for requests
+#
+# Exit codes:
+#   0: Success (heartbeat written, all peers fresh OR stale peers successfully reported).
+#   1: Configuration error (unknown --self, missing config).
+#   2: State read/write error.
 
 # `set -e` so a failed heartbeat write (chattr +i, ENOSPC, RO remount, NFS
 # hiccup) aborts the script instead of silently printing "OK" while peers
