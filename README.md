@@ -43,7 +43,8 @@ Apache-2.0. Latest release: v0.1.7 (2026-05-07). There have been no commits on `
 8. [Long-term Maintenance](#8-long-term-maintenance)
 9. [Lessons Baked In](#9-lessons-baked-in)
 10. [Known Limitations](#10-known-limitations)
-11. [License](#11-license)
+11. [API Reference & Usage Examples](#11-api-reference--usage-examples)
+12. [License](#12-license)
 
 ---
 
@@ -772,7 +773,43 @@ These lessons come from running the setup in production for a while and putting 
 
 ---
 
-## 11. License
+## 11. API Reference & Usage Examples
+
+The watcher layer depends heavily on environment configurations to configure its baseline and cross-patrol heartbeats.
+
+### Environment Templates (`config/machine.env`)
+
+Examples of environment files are located in the `examples/` directory.
+
+- **`solo-dev.env`**: Used for a minimal setup, no telegram bots or subagents.
+- **`shared-server.env`**: Used for multi-service host setups with full Phase 1.5 + Phase 2 bots and extra paths configurations.
+
+#### Essential API Config Variables:
+
+* `OPERATOR_TELEGRAM_USER_ID`: Identifies the human operator for Telegram gateway messages.
+* `HEARTBEAT_PATROL_CHAT_ID`: Identifies the chat ID the patrol agent sends alerts to. (Often mirrors `OPERATOR_TELEGRAM_USER_ID`).
+* `MACHINE_SERVICES_MD` / `MACHINE_OUT_OF_SCOPE_MD`: Provide Hermes context to what it should manage.
+* `HERMES_READ_EXTRA_PATHS_MD`: Additional logs or directories (like project subagents) that Hermes should monitor.
+* Telegram Bot Tokens (Keep these in `config/machine.env.secrets`):
+  * `TG_BOT_MAIN_NAME` / Token: the main agent interface
+  * `TG_BOT_HERMES_MAINTAINER_NAME` / Token
+  * `TG_BOT_HERMES_AGENT_NAME` / Token
+
+### Usage Example (Solo Dev Setup)
+
+To deploy the template as a minimal local instance, simply run:
+
+```bash
+cp examples/solo-dev.env config/machine.env
+$EDITOR config/machine.env   # adjust to your operator + machine
+cp config/machine.env.secrets.example config/machine.env.secrets
+# Tokens not necessary if Phase 1.5/2 are skipped via empty variables.
+bash scripts/all.sh
+```
+
+See the `examples/README.md` for extended details, including configuring a `shared-server` with active subagents.
+
+## 12. License
 
 Apache-2.0. See [LICENSE](LICENSE).
 

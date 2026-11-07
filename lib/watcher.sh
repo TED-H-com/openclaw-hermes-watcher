@@ -11,6 +11,19 @@
 #
 # This script is rule-based, not LLM-based. It cannot be talked into anything.
 # It is itself chattr +i after deployment.
+#
+# === API & Usage ===
+# The watcher does not have a REST API or CLI flags for typical usage; it is
+# meant to be managed by systemd as `openclaw-watcher.service`.
+#
+# Environment Variables:
+#   BASELINE_DIR         - Path to the baseline configuration (default: $HOME/.openclaw/workspace/baseline)
+#   JOURNAL              - Path to output journal events (default: $HOME/.openclaw/workspace/evolution-journal.jsonl)
+#   EXPECTED_HASHES_FILE - Where expected hashes are verified (default: $BASELINE_DIR/.expected-hashes)
+#   INTERVAL_SEC         - Interval to check baseline files (default: 60)
+#
+# The journal entries are appended as JSONL and typically checked by Hermes or
+# monitoring agents. Anomalies are formatted securely via escape_json_string.
 
 set -euo pipefail
 
